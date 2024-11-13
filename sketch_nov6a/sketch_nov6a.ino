@@ -1,11 +1,11 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-LiquidCrystal_I2C lcd(0x27, 20, 4);
+LiquidCrystal_I2C lcd(0x27, 20, 4);  // LCD address 0x27, size 20x4
 
-const int buttonLeft = 2;
-const int buttonRight = 3;
-const int buzzerPin = 7;
+const int buttonLeft = 2;   // Pin for left turn button
+const int buttonRight = 3;  // Pin for right turn button
+const int buzzerPin = 6;    // Pin for buzzer
 
 enum Direction { UP,
                  RIGHT,
@@ -24,87 +24,16 @@ int snakeLength = 3;
 int headX = 10;
 int headY = 2;
 
-Point food;
+Point food; 
 
 
-byte headUp[8] = {
-  B00000,
-  B00100,
-  B00100,
-  B01110,
-  B01110,
-  B01110,
-  B01110,
-  B01110
-};
-
-byte headRight[8] = {
-  B00000,
-  B00000,
-  B11000,
-  B11110,
-  B11110,
-  B11000,
-  B00000,
-  B00000
-};
-
-byte headDown[8] = {
-  B01110,
-  B01110,
-  B01110,
-  B01110,
-  B01110,
-  B00100,
-  B00100,
-  B00000
-};
-
-byte headLeft[8] = {
-  B00000,
-  B00000,
-  B00011,
-  B01111,
-  B01111,
-  B00011,
-  B00000,
-  B00000
-};
-
-
-byte foodChar[8] = {
-  B00000,
-  B00010,
-  B00100,
-  B01110,
-  B11111,
-  B11111,
-  B01110,
-  B00000
-};
-
-
-byte bodyVer[8] = {
-  B00000,
-  B00000,
-  B11111,
-  B11111,
-  B11111,
-  B11111,
-  B00000,
-  B00000
-};
-
-byte bodyHor[8] = {
-  B01110,
-  B01110,
-  B01110,
-  B01110,
-  B01110,
-  B01110,
-  B01110,
-  B01110
-};
+byte headUp[8] = { B00000, B00100, B00100, B01110, B01110, B01110, B01110, B01110 };
+byte headRight[8] = { B00000, B00000, B11000, B11110, B11110, B11000, B00000, B00000 };
+byte headDown[8] = { B01110, B01110, B01110, B01110, B01110, B00100, B00100, B00000 };
+byte headLeft[8] = { B00000, B00000, B00011, B01111, B01111, B00011, B00000, B00000 };
+byte foodChar[8] = { B00000, B00010, B00100, B01110, B11111, B11111, B01110, B00000 };
+byte bodyVer[8] = { B11000, B11100, B11111, B11111, B11111, B11111, B11100, B11000 };
+byte bodyHor[8] = { B01110, B01110, B01110, B01110, B01110, B01110, B01110, B01110 };
 
 void setup() {
   lcd.init();
@@ -112,25 +41,61 @@ void setup() {
   pinMode(buttonLeft, INPUT_PULLUP);
   pinMode(buttonRight, INPUT_PULLUP);
   pinMode(buzzerPin, OUTPUT);
+  digitalWrite(buzzerPin, LOW); 
 
-  lcd.createChar(0, foodChar);
-  lcd.createChar(1, headUp);
-  lcd.createChar(2, headRight);
-  lcd.createChar(3, headDown);
-  lcd.createChar(4, headLeft);
-  lcd.createChar(5, bodyVer);
-  lcd.createChar(6, bodyHor);
+  lcd.createChar(0, foodChar);   
+  lcd.createChar(1, headUp);     
+  lcd.createChar(2, headRight);  
+  lcd.createChar(3, headDown);   
+  lcd.createChar(4, headLeft);   
+  lcd.createChar(5, bodyVer);    
+  lcd.createChar(6, bodyHor);    
 
+  showWelcomeScreen();
   initializeSnake();
   generateFood();
 }
 
+void showWelcomeScreen() {
+  lcd.clear();
+  lcd.setCursor(2, 1);
+  lcd.print("Welcome to Snake!");
+
+  lcd.setCursor(2, 2);
+  lcd.print("Press any button");
+
+  String groupText = "Kelompok 2  24.21.1582 24.21.1590 23.11.5708 23.11.5740 ";
+  
+  unsigned long previousMillis = 0;
+  int groupTextPos = 0;
+  int namesTextPos = 0;
+  const unsigned long interval = 300;
+  
+  while (true) {
+    unsigned long currentMillis = millis();
+    if (currentMillis - previousMillis >= interval) {
+      previousMillis = currentMillis;
+
+      lcd.setCursor(0, 0);
+      lcd.print(groupText.substring(groupTextPos, groupTextPos + 20));
+      groupTextPos = (groupTextPos + 1) % groupText.length();
+    }
+    
+    if (digitalRead(buttonLeft) == LOW || digitalRead(buttonRight) == LOW) {
+      delay(200); 
+      break;      
+    }
+  }
+
+  lcd.clear();
+}
+
 void initializeSnake() {
-  snakeLength = 3;
-  headX = 10;
-  headY = 2;
+  snakeLength = 2; 
+  headX = 10;       
+  headY = 2;        
   for (int i = 0; i < snakeLength; i++) {
-    snake[i] = { headX - i, headY };
+    snake[i] = { headX - i, headY };  
   }
 }
 
@@ -139,28 +104,30 @@ void loop() {
   moveSnake();
 
   if (checkCollision()) {
-    snakeLength = snakeLength + 1;  
-    generateFood();                
+    snakeLength++;   
+    generateFood();  
   }
 
-  if (checkSelfCollision()) {  
-    gameOver();                
+  if (checkSelfCollision()) {
+    gameOver();
   }
 
   updateLCD();
-  delay(500);  
+  delay(500);
 }
 
 void checkButtons() {
   if (digitalRead(buttonLeft) == LOW) {
-    tone(buzzerPin, 1000, 100);                   
-    dir = static_cast<Direction>((dir + 3) % 4);  
-    delay(200);                                   
+    dir = static_cast<Direction>((dir + 3) % 4);  // Turn left
+    digitalWrite(buzzerPin, HIGH);
+    delay(20);
+    digitalWrite(buzzerPin, LOW);
   }
   if (digitalRead(buttonRight) == LOW) {
-    tone(buzzerPin, 1000, 100);                   
-    dir = static_cast<Direction>((dir + 1) % 4);  
-    delay(200);                               
+    dir = static_cast<Direction>((dir + 1) % 4);  // Turn right
+    digitalWrite(buzzerPin, HIGH);
+    delay(20);
+    digitalWrite(buzzerPin, LOW);
   }
 }
 
@@ -178,8 +145,7 @@ void moveSnake() {
 
   headX = (headX + 20) % 20;
   headY = (headY + 4) % 4;
-
-  snake[0] = { headX, headY }; 
+  snake[0] = { headX, headY };
 }
 
 bool checkCollision() {
@@ -187,9 +153,8 @@ bool checkCollision() {
 }
 
 void generateFood() {
-  food.x = random(0, 19);  
-  food.y = random(0, 3);  
-
+  food.x = random(0, 20);
+  food.y = random(0, 4);
   for (int i = 0; i < snakeLength; i++) {
     if (food.x == snake[i].x && food.y == snake[i].y) {
       generateFood();  
@@ -201,7 +166,7 @@ void generateFood() {
 bool checkSelfCollision() {
   for (int i = 1; i < snakeLength; i++) {
     if (headX == snake[i].x && headY == snake[i].y) {
-      return true;  
+      return true;
     }
   }
   return false;
@@ -213,10 +178,13 @@ void gameOver() {
   lcd.print("Game Over!");
   lcd.setCursor(0, 1);
   lcd.print("Score: ");
-  lcd.print(snakeLength - 3); 
+  lcd.print(snakeLength - 3);
 
-  tone(buzzerPin, 500, 1000); 
-  waitForRestart();         
+  digitalWrite(buzzerPin, HIGH);
+  delay(250);
+  digitalWrite(buzzerPin, LOW);
+
+  waitForRestart();
 }
 
 void waitForRestart() {
@@ -224,12 +192,10 @@ void waitForRestart() {
     lcd.setCursor(2, 3);
     lcd.print("Press to Restart");
     delay(500);
-
     lcd.setCursor(2, 3);
     lcd.print("                ");
     delay(300);
     if (digitalRead(buttonLeft) == LOW || digitalRead(buttonRight) == LOW) {
-      delay(200);
       initializeSnake();
       generateFood();
       dir = RIGHT;
@@ -267,15 +233,11 @@ void drawSnake() {
 
   for (int i = 1; i < snakeLength; i++) {
     lcd.setCursor(snake[i].x, snake[i].y);
-    if (snake[i].x == snake[i - 1].x) {
-      lcd.write(byte(6)); 
-    } else {
-      lcd.write(byte(5)); 
-    }
+    lcd.write(snake[i].x == snake[i - 1].x ? byte(6) : byte(5));
   }
 }
 
 void drawFood() {
   lcd.setCursor(food.x, food.y);
-  lcd.write(byte(0)); 
+  lcd.write(byte(0));
 }
